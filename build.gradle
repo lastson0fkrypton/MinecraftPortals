@@ -1,0 +1,74 @@
+plugins {
+    id 'fabric-loom' version '1.7-SNAPSHOT'
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    maven {
+        name = 'Fabric'
+        url = 'https://maven.fabricmc.net/'
+    }
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+processResources {
+    inputs.property 'version', project.version
+
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+tasks.register('start') {
+    group = 'application'
+    description = 'Starts the Fabric development client (alias of runClient).'
+    dependsOn 'runClient'
+}
+
+tasks.register('buildMod') {
+    group = 'build'
+    description = 'Builds the mod jar (alias of build).'
+    dependsOn 'build'
+}
+
+tasks.register('copyModJar', Copy) {
+    group = 'distribution'
+    description = 'Builds and copies the remapped mod jar into your Minecraft mods folder. Uses -PmodsDir or minecraft_mods_dir from gradle.properties.'
+    dependsOn 'remapJar'
+
+    def modsDir = providers.gradleProperty('modsDir')
+        .orElse(providers.gradleProperty('minecraft_mods_dir'))
+
+    from(tasks.named('remapJar').flatMap { it.archiveFile })
+    into(modsDir)
+
+    doFirst {
+        if (!modsDir.present) {
+            throw new GradleException('Missing mods directory. Set minecraft_mods_dir in gradle.properties or pass -PmodsDir="C:\\MultiMC\\instances\\MyInstance\\.minecraft\\mods"')
+        }
+    }
+}

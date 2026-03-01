@@ -1,0 +1,47 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Minecraft: Start Dev Client",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        ".\\scripts\\gradle-local.ps1",
+        "start"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Minecraft: Build Mod Jar",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        ".\\scripts\\gradle-local.ps1",
+        "buildMod"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Minecraft: Copy Mod Jar",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        ".\\scripts\\gradle-local.ps1",
+        "copyModJar"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

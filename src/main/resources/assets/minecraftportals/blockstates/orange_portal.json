@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "axis=x,facing=north,half=lower": { "model": "minecraftportals:block/orange_portal_north" },
+    "axis=x,facing=north,half=upper": { "model": "minecraftportals:block/orange_portal_north" },
+    "axis=x,facing=east,half=lower": { "model": "minecraftportals:block/orange_portal_east" },
+    "axis=x,facing=east,half=upper": { "model": "minecraftportals:block/orange_portal_east" },
+    "axis=x,facing=south,half=lower": { "model": "minecraftportals:block/orange_portal_south" },
+    "axis=x,facing=south,half=upper": { "model": "minecraftportals:block/orange_portal_south" },
+    "axis=x,facing=west,half=lower": { "model": "minecraftportals:block/orange_portal_west" },
+    "axis=x,facing=west,half=upper": { "model": "minecraftportals:block/orange_portal_west" },
+    "axis=z,facing=north,half=lower": { "model": "minecraftportals:block/orange_portal_north" },
+    "axis=z,facing=north,half=upper": { "model": "minecraftportals:block/orange_portal_north" },
+    "axis=z,facing=east,half=lower": { "model": "minecraftportals:block/orange_portal_east" },
+    "axis=z,facing=east,half=upper": { "model": "minecraftportals:block/orange_portal_east" },
+    "axis=z,facing=south,half=lower": { "model": "minecraftportals:block/orange_portal_south" },
+    "axis=z,facing=south,half=upper": { "model": "minecraftportals:block/orange_portal_south" },
+    "axis=z,facing=west,half=lower": { "model": "minecraftportals:block/orange_portal_west" },
+    "axis=z,facing=west,half=upper": { "model": "minecraftportals:block/orange_portal_west" }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "minecraftportals",
+  "version": "${version}",
+  "name": "Minecraft Portals",
+  "description": "Portal gun mod with blue/orange placeable portals.",
+  "authors": [
+    "You"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.minecraftportals.MinecraftPortalsMod"
+    ],
+    "client": [
+      "com.minecraftportals.MinecraftPortalsClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.11",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
