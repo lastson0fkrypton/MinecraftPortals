@@ -4,14 +4,15 @@ import com.minecraftportals.portal.PortalColor;
 import com.minecraftportals.portal.PortalStateTracker;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.StateManager;
+import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.EnumProperty;
-import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
@@ -21,12 +22,14 @@ import net.minecraft.world.World;
 
 public class PortalBlock extends Block {
     public static final EnumProperty<DoubleBlockHalf> HALF = EnumProperty.of("half", DoubleBlockHalf.class);
-    public static final EnumProperty<Direction.Axis> AXIS = EnumProperty.of("axis", Direction.Axis.class, Direction.Axis.X, Direction.Axis.Z);
-    public static final EnumProperty<Direction> FACING = Properties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction.Axis> AXIS = EnumProperty.of("axis", Direction.Axis.class);
+    public static final DirectionProperty FACING = DirectionProperty.of("facing");
     private static final VoxelShape NORTH_SHAPE = Block.createCuboidShape(0.0, 0.0, 15.0, 16.0, 16.0, 16.0);
     private static final VoxelShape SOUTH_SHAPE = Block.createCuboidShape(0.0, 0.0, 0.0, 16.0, 16.0, 1.0);
     private static final VoxelShape EAST_SHAPE = Block.createCuboidShape(0.0, 0.0, 0.0, 1.0, 16.0, 16.0);
     private static final VoxelShape WEST_SHAPE = Block.createCuboidShape(15.0, 0.0, 0.0, 16.0, 16.0, 16.0);
+    private static final VoxelShape UP_SHAPE = Block.createCuboidShape(0.0, 0.0, 0.0, 16.0, 1.0, 16.0);
+    private static final VoxelShape DOWN_SHAPE = Block.createCuboidShape(0.0, 15.0, 0.0, 16.0, 16.0, 16.0);
     private static final double PLANE_TOLERANCE = 0.07;
     private final PortalColor color;
 
@@ -35,8 +38,8 @@ public class PortalBlock extends Block {
         this.color = color;
         this.setDefaultState(getStateManager().getDefaultState()
             .with(HALF, DoubleBlockHalf.LOWER)
-            .with(AXIS, Direction.Axis.X)
-            .with(FACING, Direction.EAST));
+            .with(AXIS, Direction.Axis.Y)
+            .with(FACING, Direction.NORTH));
     }
 
     @Override
@@ -51,7 +54,8 @@ public class PortalBlock extends Block {
             case SOUTH -> SOUTH_SHAPE;
             case EAST -> EAST_SHAPE;
             case WEST -> WEST_SHAPE;
-            default -> EAST_SHAPE;
+            case UP -> UP_SHAPE;
+            case DOWN -> DOWN_SHAPE;
         };
     }
 
@@ -63,12 +67,9 @@ public class PortalBlock extends Block {
         }
 
         if (!world.isClient()) {
-            DoubleBlockHalf half = state.get(HALF);
-            BlockPos otherPos = half == DoubleBlockHalf.LOWER ? pos.up() : pos.down();
-            BlockState otherState = world.getBlockState(otherPos);
-
-            if (otherState.isOf(this) && otherState.get(HALF) != half) {
-                world.removeBlock(otherPos, false);
+            BlockPos linked = findLinkedHalf(state, world, pos);
+            if (linked != null) {
+                world.setBlockState(linked, Blocks.AIR.getDefaultState(), Block.NOTIFY_ALL);
             }
         }
 
@@ -78,10 +79,9 @@ public class PortalBlock extends Block {
     @Override
     public BlockState onBreak(World world, BlockPos pos, BlockState state, PlayerEntity player) {
         if (!world.isClient()) {
-            BlockPos otherPos = state.get(HALF) == DoubleBlockHalf.LOWER ? pos.up() : pos.down();
-            BlockState otherState = world.getBlockState(otherPos);
-            if (otherState.isOf(this) && otherState.get(HALF) != state.get(HALF)) {
-                world.breakBlock(otherPos, false, player);
+            BlockPos linked = findLinkedHalf(state, world, pos);
+            if (linked != null) {
+                world.setBlockState(linked, Blocks.AIR.getDefaultState(), Block.NOTIFY_ALL);
             }
         }
 
@@ -98,8 +98,7 @@ public class PortalBlock extends Block {
             return;
         }
 
-        BlockPos portalBottom = state.get(HALF) == DoubleBlockHalf.UPPER ? pos.down() : pos;
-        PortalStateTracker.tryTeleport(serverWorld, portalBottom, this.color, entity);
+        PortalStateTracker.tryTeleport(serverWorld, pos, this.color, entity);
     }
 
     private static boolean isTouchingPortalPlane(BlockState state, BlockPos pos, Box entityBox) {
@@ -109,13 +108,32 @@ public class PortalBlock extends Block {
             case SOUTH -> pos.getZ() + 0.0625;
             case EAST -> pos.getX() + 0.0625;
             case WEST -> pos.getX() + 0.9375;
-            default -> pos.getX() + 0.5;
+            case UP -> pos.getY() + 0.0625;
+            case DOWN -> pos.getY() + 0.9375;
         };
 
         return switch (facing.getAxis()) {
             case X -> entityBox.maxX >= plane - PLANE_TOLERANCE && entityBox.minX <= plane + PLANE_TOLERANCE;
-            case Y -> false;
+            case Y -> entityBox.maxY >= plane - PLANE_TOLERANCE && entityBox.minY <= plane + PLANE_TOLERANCE;
             case Z -> entityBox.maxZ >= plane - PLANE_TOLERANCE && entityBox.minZ <= plane + PLANE_TOLERANCE;
         };
+    }
+
+    private static BlockPos findLinkedHalf(BlockState state, World world, BlockPos pos) {
+        for (Direction direction : Direction.values()) {
+            BlockPos adjacentPos = pos.offset(direction);
+            BlockState adjacent = world.getBlockState(adjacentPos);
+            if (!adjacent.isOf(state.getBlock())) {
+                continue;
+            }
+
+            if (adjacent.get(FACING) == state.get(FACING)
+                && adjacent.get(AXIS) == state.get(AXIS)
+                && adjacent.get(HALF) != state.get(HALF)) {
+                return adjacentPos;
+            }
+        }
+
+        return null;
     }
 }

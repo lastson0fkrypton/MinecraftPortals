@@ -49,48 +49,54 @@ public final class PortalPlacement {
     }
 
     private static boolean placePortal(ServerWorld world, PlayerEntity player, BlockPos hitPos, Direction side, PortalColor color) {
-        if (side.getAxis().isVertical()) {
-            return false;
-        }
-
-        BlockPos bottom = hitPos.offset(side);
+        BlockPos first = hitPos.offset(side);
         Direction facing = side;
-        Direction.Axis axis = facing.getAxis();
+        Direction.Axis pairAxis = facing.getAxis().isVertical()
+            ? player.getHorizontalFacing().getAxis()
+            : Direction.Axis.Y;
 
-        if (!canPlace(world, bottom, side)) {
+        Direction pairDirection = switch (pairAxis) {
+            case X -> Direction.EAST;
+            case Y -> Direction.UP;
+            case Z -> Direction.SOUTH;
+        };
+
+        BlockPos second = first.offset(pairDirection);
+
+        if (!canPlace(world, first, second, side)) {
             return false;
         }
 
-        placePortalBlocks(world, bottom, axis, facing, color.block());
-        PortalStateTracker.put(world.getServer(), player.getUuid(), color, new PortalStateTracker.PortalLocation(world.getRegistryKey(), bottom, facing));
+        placePortalBlocks(world, first, second, pairAxis, facing, color.block());
+        PortalStateTracker.put(world.getServer(), player.getUuid(), color, new PortalStateTracker.PortalLocation(world.getRegistryKey(), first, second, facing));
 
-        world.playSound(null, bottom, SoundEvents.BLOCK_RESPAWN_ANCHOR_CHARGE, SoundCategory.BLOCKS, 0.6F, color == PortalColor.BLUE ? 1.4F : 0.8F);
+        world.playSound(null, first, SoundEvents.BLOCK_RESPAWN_ANCHOR_CHARGE, SoundCategory.BLOCKS, 0.6F, color == PortalColor.BLUE ? 1.4F : 0.8F);
         return true;
     }
 
-    private static void placePortalBlocks(ServerWorld world, BlockPos bottom, Direction.Axis axis, Direction facing, Block portalBlock) {
-        BlockState lower = portalBlock.getDefaultState()
+    private static void placePortalBlocks(ServerWorld world, BlockPos first, BlockPos second, Direction.Axis axis, Direction facing, Block portalBlock) {
+        BlockState firstState = portalBlock.getDefaultState()
             .with(PortalBlock.HALF, DoubleBlockHalf.LOWER)
             .with(PortalBlock.AXIS, axis)
             .with(PortalBlock.FACING, facing);
-        BlockState upper = portalBlock.getDefaultState()
+        BlockState secondState = portalBlock.getDefaultState()
             .with(PortalBlock.HALF, DoubleBlockHalf.UPPER)
             .with(PortalBlock.AXIS, axis)
             .with(PortalBlock.FACING, facing);
 
-        world.setBlockState(bottom, lower, Block.NOTIFY_ALL);
-        world.setBlockState(bottom.up(), upper, Block.NOTIFY_ALL);
+        world.setBlockState(first, firstState, Block.NOTIFY_ALL);
+        world.setBlockState(second, secondState, Block.NOTIFY_ALL);
     }
 
-    private static boolean canPlace(ServerWorld world, BlockPos bottom, Direction side) {
-        if (!world.getBlockState(bottom).isReplaceable() || !world.getBlockState(bottom.up()).isReplaceable()) {
+    private static boolean canPlace(ServerWorld world, BlockPos first, BlockPos second, Direction side) {
+        if (!world.getBlockState(first).isReplaceable() || !world.getBlockState(second).isReplaceable()) {
             return false;
         }
 
-        BlockPos backBottom = bottom.offset(side.getOpposite());
-        BlockPos backTop = backBottom.up();
-        return world.getBlockState(backBottom).isSideSolidFullSquare(world, backBottom, side)
-            && world.getBlockState(backTop).isSideSolidFullSquare(world, backTop, side);
+        BlockPos backFirst = first.offset(side.getOpposite());
+        BlockPos backSecond = second.offset(side.getOpposite());
+        return world.getBlockState(backFirst).isSideSolidFullSquare(world, backFirst, side)
+            && world.getBlockState(backSecond).isSideSolidFullSquare(world, backSecond, side);
     }
 
 }

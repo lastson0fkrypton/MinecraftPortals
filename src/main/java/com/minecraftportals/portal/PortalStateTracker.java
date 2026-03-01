@@ -69,17 +69,17 @@ public final class PortalStateTracker {
         }
 
         Block portalBlock = color.block();
-        if (world.getBlockState(location.bottomPos()).isOf(portalBlock)) {
-            world.removeBlock(location.bottomPos(), false);
+        if (world.getBlockState(location.firstPos()).isOf(portalBlock)) {
+            world.removeBlock(location.firstPos(), false);
         }
-        if (world.getBlockState(location.bottomPos().up()).isOf(portalBlock)) {
-            world.removeBlock(location.bottomPos().up(), false);
+        if (world.getBlockState(location.secondPos()).isOf(portalBlock)) {
+            world.removeBlock(location.secondPos(), false);
         }
 
         save(server);
     }
 
-    public static void tryTeleport(ServerWorld fromWorld, BlockPos enteredBottomPos, PortalColor enteredColor, Entity entity) {
+    public static void tryTeleport(ServerWorld fromWorld, BlockPos enteredPos, PortalColor enteredColor, Entity entity) {
         ensureLoaded(fromWorld.getServer());
 
         if (entity.getWorld().isClient() || entity.isRemoved()) {
@@ -92,7 +92,7 @@ public final class PortalStateTracker {
             return;
         }
 
-        PortalOwner owner = PORTAL_INDEX.get(new PortalKey(fromWorld.getRegistryKey(), enteredBottomPos));
+        PortalOwner owner = PORTAL_INDEX.get(new PortalKey(fromWorld.getRegistryKey(), enteredPos));
         if (owner == null || owner.color() != enteredColor) {
             return;
         }
@@ -112,16 +112,17 @@ public final class PortalStateTracker {
             return;
         }
 
-        if (!targetWorld.getBlockState(destination.bottomPos()).isOf(enteredColor.other().block())) {
+        if (!targetWorld.getBlockState(destination.firstPos()).isOf(enteredColor.other().block())) {
             return;
         }
 
+        Vec3d center = Vec3d.ofCenter(destination.firstPos()).add(Vec3d.ofCenter(destination.secondPos())).multiply(0.5);
         Vec3d forward = Vec3d.of(destination.facing().getVector());
         double exitOffset = 0.72;
-        double x = destination.bottomPos().getX() + 0.5 + forward.x * exitOffset;
-        double y = destination.bottomPos().getY() + 0.15;
-        double z = destination.bottomPos().getZ() + 0.5 + forward.z * exitOffset;
-        float yaw = destination.facing().asRotation();
+        double x = center.x + forward.x * exitOffset;
+        double y = center.y - 0.35 + forward.y * exitOffset;
+        double z = center.z + forward.z * exitOffset;
+        float yaw = destination.facing().getAxis().isVertical() ? entity.getYaw() : destination.facing().asRotation();
         float pitch = entity.getPitch();
 
         if (entity instanceof ServerPlayerEntity player) {
@@ -143,14 +144,14 @@ public final class PortalStateTracker {
 
     private static void index(UUID playerId, PortalColor color, PortalLocation location) {
         PortalOwner owner = new PortalOwner(playerId, color);
-        PORTAL_INDEX.put(new PortalKey(location.worldKey(), location.bottomPos()), owner);
-        PORTAL_INDEX.put(new PortalKey(location.worldKey(), location.bottomPos().up()), owner);
+        PORTAL_INDEX.put(new PortalKey(location.worldKey(), location.firstPos()), owner);
+        PORTAL_INDEX.put(new PortalKey(location.worldKey(), location.secondPos()), owner);
     }
 
     private static void removeIndex(UUID playerId, PortalColor color, PortalLocation location) {
         PortalOwner owner = new PortalOwner(playerId, color);
-        PORTAL_INDEX.remove(new PortalKey(location.worldKey(), location.bottomPos()), owner);
-        PORTAL_INDEX.remove(new PortalKey(location.worldKey(), location.bottomPos().up()), owner);
+        PORTAL_INDEX.remove(new PortalKey(location.worldKey(), location.firstPos()), owner);
+        PORTAL_INDEX.remove(new PortalKey(location.worldKey(), location.secondPos()), owner);
     }
 
     private record PortalOwner(UUID playerId, PortalColor color) {
@@ -159,7 +160,7 @@ public final class PortalStateTracker {
     private record PortalKey(net.minecraft.registry.RegistryKey<World> worldKey, BlockPos pos) {
     }
 
-    public record PortalLocation(net.minecraft.registry.RegistryKey<World> worldKey, BlockPos bottomPos, Direction facing) {
+    public record PortalLocation(net.minecraft.registry.RegistryKey<World> worldKey, BlockPos firstPos, BlockPos secondPos, Direction facing) {
     }
 
     private static void ensureLoaded(MinecraftServer server) {
@@ -196,12 +197,17 @@ public final class PortalStateTracker {
                 int y = Integer.parseInt(parts[4]);
                 int z = Integer.parseInt(parts[5]);
                 Direction facing = Direction.byName(parts[6]);
-                if (facing == null || facing.getAxis().isVertical()) {
+                if (facing == null) {
                     facing = Direction.NORTH;
                 }
 
                 RegistryKey<World> worldKey = RegistryKey.of(RegistryKeys.WORLD, worldId);
-                PortalLocation location = new PortalLocation(worldKey, new BlockPos(x, y, z), facing);
+                BlockPos firstPos = new BlockPos(x, y, z);
+                BlockPos secondPos = switch (facing.getAxis()) {
+                    case Y -> firstPos.offset(Direction.SOUTH);
+                    case X, Z -> firstPos.up();
+                };
+                PortalLocation location = new PortalLocation(worldKey, firstPos, secondPos, facing);
 
                 EnumMap<PortalColor, PortalLocation> byColor = PORTALS.computeIfAbsent(playerId, key -> new EnumMap<>(PortalColor.class));
                 byColor.put(color, location);
@@ -229,9 +235,9 @@ public final class PortalStateTracker {
                     lines.add(playerId + "|"
                         + byColor.getKey().name() + "|"
                         + location.worldKey().getValue() + "|"
-                        + location.bottomPos().getX() + "|"
-                        + location.bottomPos().getY() + "|"
-                        + location.bottomPos().getZ() + "|"
+                        + location.firstPos().getX() + "|"
+                        + location.firstPos().getY() + "|"
+                        + location.firstPos().getZ() + "|"
                         + location.facing().asString() + "|v1");
                 }
             }
