@@ -10,7 +10,7 @@ import net.minecraft.registry.Registry;
 import net.minecraft.sound.BlockSoundGroup;
 
 public final class ModBlocks {
-    public static final Block BLUE_PORTAL = register("blue_portal", new PortalBlock(PortalColor.BLUE, AbstractBlock.Settings.create()
+    public static final Block BLUE_PORTAL = register("blue_portal_thin", new PortalBlock(PortalColor.BLUE, AbstractBlock.Settings.create()
         .mapColor(MapColor.BLUE)
         .strength(-1.0F, 3600000.0F)
         .dropsNothing()
@@ -19,7 +19,7 @@ public final class ModBlocks {
         .luminance(state -> 12)
         .sounds(BlockSoundGroup.GLASS)));
 
-    public static final Block ORANGE_PORTAL = register("orange_portal", new PortalBlock(PortalColor.ORANGE, AbstractBlock.Settings.create()
+    public static final Block ORANGE_PORTAL = register("orange_portal_thin", new PortalBlock(PortalColor.ORANGE, AbstractBlock.Settings.create()
         .mapColor(MapColor.ORANGE)
         .strength(-1.0F, 3600000.0F)
         .dropsNothing()

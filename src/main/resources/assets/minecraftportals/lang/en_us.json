@@ -1,5 +1,7 @@
 {
   "item.minecraftportals.portal_gun": "Portal Gun",
+  "block.minecraftportals.blue_portal_thin": "Blue Portal",
+  "block.minecraftportals.orange_portal_thin": "Orange Portal",
   "block.minecraftportals.blue_portal": "Blue Portal",
   "block.minecraftportals.orange_portal": "Orange Portal"
 }

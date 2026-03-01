@@ -8,7 +8,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -30,6 +33,7 @@ public final class PortalStateTracker {
     private static final Map<UUID, Long> TELEPORT_COOLDOWNS = new ConcurrentHashMap<>();
     private static final long TELEPORT_COOLDOWN_MS = 800L;
     private static final String SAVE_FILE_NAME = "minecraftportals_portals.txt";
+    private static final int CLEANUP_LIMIT = 256;
     private static Path loadedWorldPath;
 
     private PortalStateTracker() {
@@ -69,12 +73,8 @@ public final class PortalStateTracker {
         }
 
         Block portalBlock = color.block();
-        if (world.getBlockState(location.firstPos()).isOf(portalBlock)) {
-            world.removeBlock(location.firstPos(), false);
-        }
-        if (world.getBlockState(location.secondPos()).isOf(portalBlock)) {
-            world.removeBlock(location.secondPos(), false);
-        }
+        cleanupPortalCluster(world, location.firstPos(), portalBlock);
+        cleanupPortalCluster(world, location.secondPos(), portalBlock);
 
         save(server);
     }
@@ -186,27 +186,37 @@ public final class PortalStateTracker {
                 }
 
                 String[] parts = line.split("\\|");
-                if (parts.length != 8) {
+                if (parts.length != 8 && parts.length != 11) {
                     continue;
                 }
 
                 UUID playerId = UUID.fromString(parts[0]);
                 PortalColor color = PortalColor.valueOf(parts[1]);
                 Identifier worldId = Identifier.of(parts[2]);
-                int x = Integer.parseInt(parts[3]);
-                int y = Integer.parseInt(parts[4]);
-                int z = Integer.parseInt(parts[5]);
+                int firstX = Integer.parseInt(parts[3]);
+                int firstY = Integer.parseInt(parts[4]);
+                int firstZ = Integer.parseInt(parts[5]);
                 Direction facing = Direction.byName(parts[6]);
                 if (facing == null) {
                     facing = Direction.NORTH;
                 }
 
                 RegistryKey<World> worldKey = RegistryKey.of(RegistryKeys.WORLD, worldId);
-                BlockPos firstPos = new BlockPos(x, y, z);
-                BlockPos secondPos = switch (facing.getAxis()) {
-                    case Y -> firstPos.offset(Direction.SOUTH);
-                    case X, Z -> firstPos.up();
-                };
+                BlockPos firstPos = new BlockPos(firstX, firstY, firstZ);
+                BlockPos secondPos;
+
+                if (parts.length == 11) {
+                    int secondX = Integer.parseInt(parts[7]);
+                    int secondY = Integer.parseInt(parts[8]);
+                    int secondZ = Integer.parseInt(parts[9]);
+                    secondPos = new BlockPos(secondX, secondY, secondZ);
+                } else {
+                    secondPos = switch (facing.getAxis()) {
+                        case Y -> firstPos.offset(Direction.SOUTH);
+                        case X, Z -> firstPos.up();
+                    };
+                }
+
                 PortalLocation location = new PortalLocation(worldKey, firstPos, secondPos, facing);
 
                 EnumMap<PortalColor, PortalLocation> byColor = PORTALS.computeIfAbsent(playerId, key -> new EnumMap<>(PortalColor.class));
@@ -226,7 +236,7 @@ public final class PortalStateTracker {
             Files.createDirectories(file.getParent());
 
             List<String> lines = new ArrayList<>();
-            lines.add("# playerUuid|color|world|x|y|z|facing|v1");
+            lines.add("# playerUuid|color|world|firstX|firstY|firstZ|facing|secondX|secondY|secondZ|v2");
 
             for (Map.Entry<UUID, EnumMap<PortalColor, PortalLocation>> entry : PORTALS.entrySet()) {
                 UUID playerId = entry.getKey();
@@ -238,7 +248,10 @@ public final class PortalStateTracker {
                         + location.firstPos().getX() + "|"
                         + location.firstPos().getY() + "|"
                         + location.firstPos().getZ() + "|"
-                        + location.facing().asString() + "|v1");
+                        + location.facing().asString() + "|"
+                        + location.secondPos().getX() + "|"
+                        + location.secondPos().getY() + "|"
+                        + location.secondPos().getZ() + "|v2");
                 }
             }
 
@@ -257,6 +270,35 @@ public final class PortalStateTracker {
             UUID playerId = entry.getKey();
             for (Map.Entry<PortalColor, PortalLocation> byColor : entry.getValue().entrySet()) {
                 index(playerId, byColor.getKey(), byColor.getValue());
+            }
+        }
+    }
+
+    private static void cleanupPortalCluster(ServerWorld world, BlockPos start, Block portalBlock) {
+        if (!world.getBlockState(start).isOf(portalBlock)) {
+            return;
+        }
+
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        Set<BlockPos> visited = new HashSet<>();
+        queue.add(start);
+
+        int removed = 0;
+        while (!queue.isEmpty() && removed < CLEANUP_LIMIT) {
+            BlockPos pos = queue.removeFirst();
+            if (!visited.add(pos)) {
+                continue;
+            }
+
+            if (!world.getBlockState(pos).isOf(portalBlock)) {
+                continue;
+            }
+
+            world.removeBlock(pos, false);
+            removed++;
+
+            for (Direction direction : Direction.values()) {
+                queue.add(pos.offset(direction));
             }
         }
     }

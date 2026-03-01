@@ -1,0 +1,10 @@
+{
+  "multipart": [
+    { "when": { "facing": "north" }, "apply": { "model": "minecraftportals:block/orange_portal_thin_north" } },
+    { "when": { "facing": "east" }, "apply": { "model": "minecraftportals:block/orange_portal_thin_east" } },
+    { "when": { "facing": "south" }, "apply": { "model": "minecraftportals:block/orange_portal_thin_south" } },
+    { "when": { "facing": "west" }, "apply": { "model": "minecraftportals:block/orange_portal_thin_west" } },
+    { "when": { "facing": "up" }, "apply": { "model": "minecraftportals:block/orange_portal_thin_up" } },
+    { "when": { "facing": "down" }, "apply": { "model": "minecraftportals:block/orange_portal_thin_down" } }
+  ]
+}
