@@ -1,16 +1,36 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "portal": "minecraft:block/blue_stained_glass",
-    "particle": "minecraft:block/blue_stained_glass"
+    "portal": "minecraftportals:block/aperture_portal_blue",
+    "glass": "minecraft:block/blue_stained_glass",
+    "border": "minecraft:block/blue_concrete",
+    "particle": "minecraft:block/blue_concrete"
   },
   "elements": [
     {
       "from": [0, 0, 0],
       "to": [16, 1, 16],
       "faces": {
+        "east": { "uv": [0, 0, 16, 16], "texture": "#border" },
+        "west": { "uv": [0, 0, 16, 16], "texture": "#border" },
+        "north": { "uv": [0, 0, 16, 16], "texture": "#border" },
+        "south": { "uv": [0, 0, 16, 16], "texture": "#border" }
+      }
+    },
+    {
+      "from": [0, 0, 0],
+      "to": [16, 0.5, 16],
+      "faces": {
         "up": { "uv": [0, 0, 16, 16], "texture": "#portal" },
         "down": { "uv": [0, 0, 16, 16], "texture": "#portal" }
+      }
+    },
+    {
+      "from": [0, 0.50, 0],
+      "to": [16, 1, 16],
+      "faces": {
+        "up": { "uv": [0, 0, 16, 16], "texture": "#glass" },
+        "down": { "uv": [0, 0, 16, 16], "texture": "#glass" }
       }
     }
   ]

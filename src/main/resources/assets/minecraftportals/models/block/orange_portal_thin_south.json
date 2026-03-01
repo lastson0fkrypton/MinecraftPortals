@@ -1,16 +1,36 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "portal": "minecraft:block/orange_stained_glass",
-    "particle": "minecraft:block/orange_stained_glass"
+    "portal": "minecraftportals:block/aperture_portal_orange",
+    "glass": "minecraft:block/orange_stained_glass",
+    "border": "minecraft:block/orange_concrete",
+    "particle": "minecraft:block/orange_concrete"
   },
   "elements": [
     {
       "from": [0, 0, 0],
       "to": [16, 16, 1],
       "faces": {
+        "east": { "uv": [0, 0, 16, 16], "texture": "#border" },
+        "west": { "uv": [0, 0, 16, 16], "texture": "#border" },
+        "up": { "uv": [0, 0, 16, 16], "texture": "#border" },
+        "down": { "uv": [0, 0, 16, 16], "texture": "#border" }
+      }
+    },
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 0.5],
+      "faces": {
         "north": { "uv": [0, 0, 16, 16], "texture": "#portal" },
         "south": { "uv": [0, 0, 16, 16], "texture": "#portal" }
+      }
+    },
+    {
+      "from": [0, 0, 0.5],
+      "to": [16, 16, 1],
+      "faces": {
+        "north": { "uv": [0, 0, 16, 16], "texture": "#glass" },
+        "south": { "uv": [0, 0, 16, 16], "texture": "#glass" }
       }
     }
   ]
