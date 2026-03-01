@@ -94,15 +94,19 @@ public class PortalBlock extends Block {
             return;
         }
 
-        if (!isTouchingPortalPlane(state, pos, entity.getBoundingBox())) {
+        if (!isTouchingPortalTriggerVolume(state, pos, entity.getBoundingBox())) {
             return;
         }
 
         PortalStateTracker.tryTeleport(serverWorld, pos, this.color, entity);
     }
 
-    private static boolean isTouchingPortalPlane(BlockState state, BlockPos pos, Box entityBox) {
+    private static boolean isTouchingPortalTriggerVolume(BlockState state, BlockPos pos, Box entityBox) {
         Direction facing = state.get(FACING);
+        if (facing.getAxis().isVertical()) {
+            return entityBox.intersects(pos.getX(), pos.getY(), pos.getZ(), pos.getX() + 1.0, pos.getY() + 1.0, pos.getZ() + 1.0);
+        }
+
         double plane = switch (facing) {
             case NORTH -> pos.getZ() + 0.9375;
             case SOUTH -> pos.getZ() + 0.0625;
