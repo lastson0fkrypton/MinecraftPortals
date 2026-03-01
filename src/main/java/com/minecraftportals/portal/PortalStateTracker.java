@@ -20,6 +20,7 @@ import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.Identifier;
@@ -102,6 +103,11 @@ public final class PortalStateTracker {
             return;
         }
 
+        PortalLocation source = pair.get(enteredColor);
+        if (source == null) {
+            return;
+        }
+
         PortalLocation destination = pair.get(enteredColor.other());
         if (destination == null || !destination.worldKey().equals(fromWorld.getRegistryKey())) {
             return;
@@ -116,12 +122,32 @@ public final class PortalStateTracker {
             return;
         }
 
-        Vec3d center = Vec3d.ofCenter(destination.firstPos()).add(Vec3d.ofCenter(destination.secondPos())).multiply(0.5);
-        Vec3d forward = Vec3d.of(destination.facing().getVector());
-        double exitOffset = 0.72;
-        double x = center.x + forward.x * exitOffset;
-        double y = center.y - 0.35 + forward.y * exitOffset;
-        double z = center.z + forward.z * exitOffset;
+        PortalFrame sourceFrame = buildFrame(source);
+        PortalFrame destinationFrame = buildFrame(destination);
+        Vec3d entityCenter = entity.getBoundingBox().getCenter();
+        Vec3d incomingVelocity = entity.getVelocity();
+
+        Vec3d relativeToSource = entityCenter.subtract(sourceFrame.center());
+        double relAlongSpan = relativeToSource.dotProduct(sourceFrame.spanAxis());
+        double relAlongSide = relativeToSource.dotProduct(sourceFrame.sideAxis());
+
+        double velIntoPortal = incomingVelocity.dotProduct(sourceFrame.entryNormal());
+        double velAlongSpan = incomingVelocity.dotProduct(sourceFrame.spanAxis());
+        double velAlongSide = incomingVelocity.dotProduct(sourceFrame.sideAxis());
+
+        Vec3d outgoingVelocity = destinationFrame.exitNormal().multiply(Math.max(0.0, velIntoPortal))
+            .add(destinationFrame.spanAxis().multiply(velAlongSpan))
+            .add(destinationFrame.sideAxis().multiply(velAlongSide));
+
+        double exitOffset = 0.55;
+        Vec3d outPosition = destinationFrame.center()
+            .add(destinationFrame.spanAxis().multiply(relAlongSpan))
+            .add(destinationFrame.sideAxis().multiply(relAlongSide))
+            .add(destinationFrame.exitNormal().multiply(exitOffset));
+
+        double x = outPosition.x;
+        double y = outPosition.y - (entity.getHeight() * 0.5);
+        double z = outPosition.z;
         float yaw = destination.facing().getAxis().isVertical() ? entity.getYaw() : destination.facing().asRotation();
         float pitch = entity.getPitch();
 
@@ -129,16 +155,19 @@ public final class PortalStateTracker {
             player.networkHandler.requestTeleport(x, y, z, yaw, pitch);
             player.setBodyYaw(yaw);
             player.setHeadYaw(yaw);
+            player.setVelocity(outgoingVelocity);
+            player.setOnGround(false);
+            player.networkHandler.sendPacket(new EntityVelocityUpdateS2CPacket(player));
         } else {
             entity.requestTeleport(x, y, z);
             entity.setYaw(yaw);
+            entity.setVelocity(outgoingVelocity);
             if (entity instanceof LivingEntity livingEntity) {
                 livingEntity.setBodyYaw(yaw);
                 livingEntity.setHeadYaw(yaw);
             }
         }
 
-        entity.setVelocity(forward.x * 0.18, Math.max(entity.getVelocity().y, 0.02), forward.z * 0.18);
         TELEPORT_COOLDOWNS.put(entity.getUuid(), now + TELEPORT_COOLDOWN_MS);
     }
 
@@ -301,5 +330,35 @@ public final class PortalStateTracker {
                 queue.add(pos.offset(direction));
             }
         }
+    }
+
+    private static PortalFrame buildFrame(PortalLocation location) {
+        Vec3d firstCenter = Vec3d.ofCenter(location.firstPos());
+        Vec3d secondCenter = Vec3d.ofCenter(location.secondPos());
+        Vec3d center = firstCenter.add(secondCenter).multiply(0.5);
+
+        Vec3d spanAxis = secondCenter.subtract(firstCenter);
+        if (spanAxis.lengthSquared() < 1.0E-6) {
+            spanAxis = new Vec3d(0.0, 1.0, 0.0);
+        } else {
+            spanAxis = spanAxis.normalize();
+        }
+
+        Vec3d exitNormal = Vec3d.of(location.facing().getVector()).normalize();
+        Vec3d sideAxis = exitNormal.crossProduct(spanAxis);
+        if (sideAxis.lengthSquared() < 1.0E-6) {
+            sideAxis = Math.abs(exitNormal.y) > 0.8
+                ? new Vec3d(1.0, 0.0, 0.0)
+                : new Vec3d(0.0, 1.0, 0.0);
+        } else {
+            sideAxis = sideAxis.normalize();
+        }
+
+        spanAxis = sideAxis.crossProduct(exitNormal).normalize();
+        Vec3d entryNormal = exitNormal.multiply(-1.0);
+        return new PortalFrame(center, spanAxis, sideAxis, exitNormal, entryNormal);
+    }
+
+    private record PortalFrame(Vec3d center, Vec3d spanAxis, Vec3d sideAxis, Vec3d exitNormal, Vec3d entryNormal) {
     }
 }
