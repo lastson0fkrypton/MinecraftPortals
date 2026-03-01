@@ -20,6 +20,8 @@ public final class PortalPlacement {
     }
 
     public static boolean shoot(ServerWorld world, PlayerEntity player, PortalColor color) {
+        PortalStateTracker.clear(world.getServer(), player.getUuid(), color);
+
         BlockHitResult hit = raycast(player);
         if (hit == null) {
             return false;
@@ -29,6 +31,12 @@ public final class PortalPlacement {
     }
 
     public static boolean shootAtBlock(ServerWorld world, PlayerEntity player, BlockPos hitPos, Direction side, PortalColor color) {
+        if (world.getBlockState(hitPos).isOf(color.block())) {
+            PortalStateTracker.clear(world.getServer(), player.getUuid(), color);
+            return shoot(world, player, color);
+        }
+
+        PortalStateTracker.clear(world.getServer(), player.getUuid(), color);
         return placePortal(world, player, hitPos, side, color);
     }
 
@@ -53,7 +61,6 @@ public final class PortalPlacement {
             return false;
         }
 
-        PortalStateTracker.clear(world.getServer(), player.getUuid(), color);
         placePortalBlocks(world, bottom, axis, facing, color.block());
         PortalStateTracker.put(world.getServer(), player.getUuid(), color, new PortalStateTracker.PortalLocation(world.getRegistryKey(), bottom, facing));
 
