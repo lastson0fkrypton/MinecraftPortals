@@ -6,20 +6,46 @@ import com.minecraftportals.network.ShootBluePortalPayload;
 import com.minecraftportals.portal.PortalColor;
 import com.minecraftportals.portal.PortalPlacement;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.TypedActionResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import static net.minecraft.server.command.CommandManager.literal;
 
 public class MinecraftPortalsMod implements ModInitializer {
     public static final String MOD_ID = "minecraftportals";
+    private static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+
+    private static String getModVersion() {
+        return FabricLoader.getInstance()
+            .getModContainer(MOD_ID)
+            .map(container -> container.getMetadata().getVersion().getFriendlyString())
+            .orElse("dev-unknown");
+    }
 
     @Override
     public void onInitialize() {
+        String version = getModVersion();
+        LOGGER.info("Initializing {} v{}", MOD_ID, version);
+
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            dispatcher.register(literal("portalversion")
+                .executes(context -> {
+                    context.getSource().sendFeedback(() -> Text.literal("minecraftportals v" + getModVersion()), false);
+                    return 1;
+                }));
+        });
+
         ModBlocks.register();
         ModItems.register();
         PayloadTypeRegistry.playC2S().register(ShootBluePortalPayload.ID, ShootBluePortalPayload.CODEC);
