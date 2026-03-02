@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
@@ -83,7 +84,7 @@ public final class PortalStateTracker {
     public static void tryTeleport(ServerWorld fromWorld, BlockPos enteredPos, PortalColor enteredColor, Entity entity) {
         ensureLoaded(fromWorld.getServer());
 
-        if (entity.getWorld().isClient() || entity.isRemoved()) {
+        if (entity.getEntityWorld().isClient() || entity.isRemoved()) {
             return;
         }
 
@@ -148,7 +149,7 @@ public final class PortalStateTracker {
         double x = outPosition.x;
         double y = outPosition.y - (entity.getHeight() * 0.5);
         double z = outPosition.z;
-        float yaw = destination.facing().getAxis().isVertical() ? entity.getYaw() : destination.facing().asRotation();
+        float yaw = destination.facing().getAxis().isVertical() ? entity.getYaw() : facingToYaw(destination.facing());
         float pitch = entity.getPitch();
 
         if (entity instanceof ServerPlayerEntity player) {
@@ -225,8 +226,10 @@ public final class PortalStateTracker {
                 int firstX = Integer.parseInt(parts[3]);
                 int firstY = Integer.parseInt(parts[4]);
                 int firstZ = Integer.parseInt(parts[5]);
-                Direction facing = Direction.byName(parts[6]);
-                if (facing == null) {
+                Direction facing;
+                try {
+                    facing = Direction.valueOf(parts[6].toUpperCase(Locale.ROOT));
+                } catch (IllegalArgumentException exception) {
                     facing = Direction.NORTH;
                 }
 
@@ -330,6 +333,16 @@ public final class PortalStateTracker {
                 queue.add(pos.offset(direction));
             }
         }
+    }
+
+    private static float facingToYaw(Direction direction) {
+        return switch (direction) {
+            case NORTH -> 180.0F;
+            case SOUTH -> 0.0F;
+            case WEST -> 90.0F;
+            case EAST -> -90.0F;
+            case UP, DOWN -> 0.0F;
+        };
     }
 
     private static PortalFrame buildFrame(PortalLocation location) {

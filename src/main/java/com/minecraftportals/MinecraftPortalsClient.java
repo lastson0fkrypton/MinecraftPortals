@@ -4,24 +4,25 @@ import com.minecraftportals.block.ModBlocks;
 import com.minecraftportals.item.ModItems;
 import com.minecraftportals.network.ShootBluePortalPayload;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
+import net.fabricmc.fabric.api.client.rendering.v1.BlockRenderLayerMap;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.BlockRenderLayer;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 
 public class MinecraftPortalsClient implements ClientModInitializer {
     private static boolean wasAttackPressed;
+    private static boolean renderLayersRegistered;
 
     @Override
     public void onInitializeClient() {
-        ClientLifecycleEvents.CLIENT_STARTED.register(client -> {
-            BlockRenderLayerMap.INSTANCE.putBlocks(RenderLayer.getTranslucent(), ModBlocks.BLUE_PORTAL, ModBlocks.ORANGE_PORTAL);
-        });
-
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (!renderLayersRegistered) {
+                BlockRenderLayerMap.putBlocks(BlockRenderLayer.TRANSLUCENT, ModBlocks.BLUE_PORTAL, ModBlocks.ORANGE_PORTAL);
+                renderLayersRegistered = true;
+            }
+
             if (client.player == null || client.world == null || client.currentScreen != null) {
                 wasAttackPressed = false;
                 return;

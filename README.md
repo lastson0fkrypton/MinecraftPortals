@@ -11,7 +11,7 @@ A starter Fabric mod that adds a **Portal Gun**.
 
 ## Version target
 
-This project is currently configured for **Minecraft 1.21.1** with Fabric Loader **0.16.11**.
+This project is currently configured for **Minecraft 1.21.11** with Fabric Loader **0.18.4**.
 
 If you specifically need another patch line (for example `1.21.11` if/when available), update these values in `gradle.properties`:
 

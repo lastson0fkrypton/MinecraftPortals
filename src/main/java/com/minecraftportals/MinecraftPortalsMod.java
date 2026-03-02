@@ -16,7 +16,6 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.TypedActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +56,7 @@ public class MinecraftPortalsMod implements ModInitializer {
                     return;
                 }
 
-                PortalPlacement.shootAtBlock(context.player().getServerWorld(), context.player(), payload.blockPos(), payload.side(), PortalColor.BLUE);
+                PortalPlacement.shootAtBlock((ServerWorld) context.player().getEntityWorld(), context.player(), payload.blockPos(), payload.side(), PortalColor.BLUE);
             });
         });
 
@@ -71,14 +70,14 @@ public class MinecraftPortalsMod implements ModInitializer {
 
         UseItemCallback.EVENT.register((player, world, hand) -> {
             if (!player.getStackInHand(hand).isOf(ModItems.PORTAL_GUN)) {
-                return TypedActionResult.pass(player.getStackInHand(hand));
+                return ActionResult.PASS;
             }
 
             if (!world.isClient()) {
                 PortalPlacement.shoot((ServerWorld) world, player, PortalColor.ORANGE);
             }
 
-            return TypedActionResult.success(player.getStackInHand(hand), world.isClient());
+            return ActionResult.SUCCESS;
         });
     }
 

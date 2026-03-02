@@ -8,10 +8,10 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityCollisionHandler;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.StateManager;
-import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.EnumProperty;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
@@ -23,7 +23,7 @@ import net.minecraft.world.World;
 public class PortalBlock extends Block {
     public static final EnumProperty<DoubleBlockHalf> HALF = EnumProperty.of("half", DoubleBlockHalf.class);
     public static final EnumProperty<Direction.Axis> AXIS = EnumProperty.of("axis", Direction.Axis.class);
-    public static final DirectionProperty FACING = DirectionProperty.of("facing");
+    public static final EnumProperty<Direction> FACING = EnumProperty.of("facing", Direction.class);
     private static final VoxelShape NORTH_SHAPE = Block.createCuboidShape(0.0, 0.0, 15.0, 16.0, 16.0, 16.0);
     private static final VoxelShape SOUTH_SHAPE = Block.createCuboidShape(0.0, 0.0, 0.0, 16.0, 16.0, 1.0);
     private static final VoxelShape EAST_SHAPE = Block.createCuboidShape(0.0, 0.0, 0.0, 1.0, 16.0, 16.0);
@@ -60,20 +60,13 @@ public class PortalBlock extends Block {
     }
 
     @Override
-    protected void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
-        if (state.isOf(newState.getBlock())) {
-            super.onStateReplaced(state, world, pos, newState, moved);
-            return;
+    protected void onStateReplaced(BlockState state, ServerWorld world, BlockPos pos, boolean moved) {
+        BlockPos linked = findLinkedHalf(state, world, pos);
+        if (linked != null) {
+            world.setBlockState(linked, Blocks.AIR.getDefaultState(), Block.NOTIFY_ALL);
         }
 
-        if (!world.isClient()) {
-            BlockPos linked = findLinkedHalf(state, world, pos);
-            if (linked != null) {
-                world.setBlockState(linked, Blocks.AIR.getDefaultState(), Block.NOTIFY_ALL);
-            }
-        }
-
-        super.onStateReplaced(state, world, pos, newState, moved);
+        super.onStateReplaced(state, world, pos, moved);
     }
 
     @Override
@@ -89,7 +82,7 @@ public class PortalBlock extends Block {
     }
 
     @Override
-    protected void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity) {
+    protected void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity, EntityCollisionHandler handler, boolean canBreatheInWater) {
         if (world.isClient() || !(world instanceof ServerWorld serverWorld)) {
             return;
         }

@@ -12,6 +12,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
 
 public final class PortalPlacement {
     private static final double MAX_RANGE = 64.0;
@@ -51,15 +52,8 @@ public final class PortalPlacement {
     private static boolean placePortal(ServerWorld world, PlayerEntity player, BlockPos hitPos, Direction side, PortalColor color) {
         BlockPos first = hitPos.offset(side);
         Direction facing = side;
-        Direction.Axis pairAxis = facing.getAxis().isVertical()
-            ? player.getHorizontalFacing().getAxis()
-            : Direction.Axis.Y;
-
-        Direction pairDirection = switch (pairAxis) {
-            case X -> Direction.EAST;
-            case Y -> Direction.UP;
-            case Z -> Direction.SOUTH;
-        };
+        Direction pairDirection = getPairDirection(player, facing);
+        Direction.Axis pairAxis = pairDirection.getAxis();
 
         BlockPos second = first.offset(pairDirection);
 
@@ -72,6 +66,26 @@ public final class PortalPlacement {
 
         world.playSound(null, first, SoundEvents.BLOCK_RESPAWN_ANCHOR_CHARGE, SoundCategory.BLOCKS, 0.6F, color == PortalColor.BLUE ? 1.4F : 0.8F);
         return true;
+    }
+
+    private static Direction getPairDirection(PlayerEntity player, Direction facing) {
+        if (!facing.getAxis().isVertical()) {
+            return Direction.UP;
+        }
+
+        Vec3d look = player.getRotationVec(1.0F);
+        double x = look.x;
+        double z = look.z;
+
+        if (Math.abs(x) < 1.0E-4 && Math.abs(z) < 1.0E-4) {
+            return player.getHorizontalFacing();
+        }
+
+        if (Math.abs(x) >= Math.abs(z)) {
+            return x >= 0.0 ? Direction.EAST : Direction.WEST;
+        }
+
+        return z >= 0.0 ? Direction.SOUTH : Direction.NORTH;
     }
 
     private static void placePortalBlocks(ServerWorld world, BlockPos first, BlockPos second, Direction.Axis axis, Direction facing, Block portalBlock) {
