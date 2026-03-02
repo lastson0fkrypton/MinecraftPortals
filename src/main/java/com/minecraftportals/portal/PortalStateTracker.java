@@ -26,6 +26,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.TeleportTarget;
 import net.minecraft.world.World;
 import net.minecraft.util.WorldSavePath;
 
@@ -110,7 +111,7 @@ public final class PortalStateTracker {
         }
 
         PortalLocation destination = pair.get(enteredColor.other());
-        if (destination == null || !destination.worldKey().equals(fromWorld.getRegistryKey())) {
+        if (destination == null) {
             return;
         }
 
@@ -119,7 +120,8 @@ public final class PortalStateTracker {
             return;
         }
 
-        if (!targetWorld.getBlockState(destination.firstPos()).isOf(enteredColor.other().block())) {
+        if (!targetWorld.getBlockState(destination.firstPos()).isOf(enteredColor.other().block())
+            || !targetWorld.getBlockState(destination.secondPos()).isOf(enteredColor.other().block())) {
             return;
         }
 
@@ -151,19 +153,32 @@ public final class PortalStateTracker {
         double z = outPosition.z;
         float yaw = destination.facing().getAxis().isVertical() ? entity.getYaw() : facingToYaw(destination.facing());
         float pitch = entity.getPitch();
+        TeleportTarget teleportTarget = new TeleportTarget(targetWorld, new Vec3d(x, y, z), outgoingVelocity, yaw, pitch, TeleportTarget.NO_OP);
 
         if (entity instanceof ServerPlayerEntity player) {
-            player.networkHandler.requestTeleport(x, y, z, yaw, pitch);
+            if (targetWorld == fromWorld) {
+                player.networkHandler.requestTeleport(x, y, z, yaw, pitch);
+            } else {
+                player.teleportTo(teleportTarget);
+            }
             player.setBodyYaw(yaw);
             player.setHeadYaw(yaw);
             player.setVelocity(outgoingVelocity);
             player.setOnGround(false);
             player.networkHandler.sendPacket(new EntityVelocityUpdateS2CPacket(player));
         } else {
-            entity.requestTeleport(x, y, z);
-            entity.setYaw(yaw);
-            entity.setVelocity(outgoingVelocity);
-            if (entity instanceof LivingEntity livingEntity) {
+            Entity teleported = targetWorld == fromWorld ? entity : entity.teleportTo(teleportTarget);
+            if (teleported == null) {
+                return;
+            }
+
+            if (targetWorld == fromWorld) {
+                teleported.requestTeleport(x, y, z);
+            }
+
+            teleported.setYaw(yaw);
+            teleported.setVelocity(outgoingVelocity);
+            if (teleported instanceof LivingEntity livingEntity) {
                 livingEntity.setBodyYaw(yaw);
                 livingEntity.setHeadYaw(yaw);
             }
